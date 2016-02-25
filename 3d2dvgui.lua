@@ -21,10 +21,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ]]--
+ -- ^^^^^^^only working for this file eh, not the whole addon^^^^^^^
+
+-- Fuck bloom
+RunConsoleCommand("pp_bloom_darken", "1.000000") -- bloom + 3d2d + hard to read
+RunConsoleCommand("pp_bloom", "1.000000")
 
 local origin = Vector(0, 0, 0)
 local angle = Vector(0, 0, 0)
 local normal = Vector(0, 0, 0)
+local realangle = Angle(0, 0, 0)
 local scale = 0
 
 -- Helper functions
@@ -92,18 +98,18 @@ local function isMouseOver( pnl )
 end
 
 local function postPanelEvent( pnl, event, ... )
-	if ( not pnl:IsValid() or not pointInsidePanel( pnl, getCursorPos() ) ) then return false end
+	if ( not pointInsidePanel( pnl, getCursorPos() ) ) then return false end
 	
 	local handled = false
 	
 	for child in pairs( pnl.Childs or {} ) do
-		if ( postPanelEvent( child, event, ... ) ) then
+		if ( postPanelEvent( child, event, ... ) ) then	
 			handled = true
 			break
 		end
 	end
 	
-	if ( not handled and pnl[ event ] ) then
+	if ( pnl[ event ] ) then
 		pnl[ event ]( pnl, ... )
 		return true
 	else
@@ -132,30 +138,49 @@ end
 -- Mouse input
 
 hook.Add( "KeyPress", "VGUI3D2DMousePress", function( _, key )
-	if ( key == IN_USE ) then
+	if ( key == IN_USE ) or ( key == IN_ATTACK ) then
+		local i = 0;
 		for pnl in pairs( inputWindows ) do
 			if ( pnl:IsValid() ) then
+				i = i +1
 				origin = pnl.Origin
 				scale = pnl.Scale
 				angle = pnl.Angle
-				normal = pnl.Normal
-				
-				postPanelEvent( pnl, "OnMousePressed", MOUSE_LEFT )
+				normal = pnl.Normal	
+				local dist = (LocalPlayer():GetPos()+Vector(0,0,90)):Distance(pnl.Origin)
+				local ang1 = LocalPlayer():EyeAngles()
+				local ang2 = angle:Angle()
+				ang1:Normalize()
+				ang2:Normalize()
+				local diff = math.AngleDifference(ang1.y, ang2.y)
+				if  dist < 100  and diff > 0  and pnl.shouldthink != false then
+					postPanelEvent( pnl, "OnMousePressed", MOUSE_LEFT )
+				end
 			end
 		end
 	end
 end )
 
 hook.Add( "KeyRelease", "VGUI3D2DMouseRelease", function( _, key )
-	if ( key == IN_USE ) then
+	if ( key == IN_USE ) or ( key == IN_ATTACK ) then
+		local i = 0;
 		for pnl in pairs( inputWindows ) do
+
 			if ( pnl:IsValid() ) then
+				i = i +1
 				origin = pnl.Origin
 				scale = pnl.Scale
 				angle = pnl.Angle
 				normal = pnl.Normal
-				
-				postPanelEvent( pnl, "OnMouseReleased", MOUSE_LEFT )
+				local dist = (LocalPlayer():GetPos()+Vector(0,0,90)):Distance(pnl.Origin)
+				local ang1 = LocalPlayer():EyeAngles()
+				local ang2 = angle:Angle()
+				ang1:Normalize()
+				ang2:Normalize()
+				local diff = math.AngleDifference(ang1.y, ang2.y)
+				if  dist < 100  and diff > 0 then
+					postPanelEvent( pnl, "OnMouseReleased", MOUSE_LEFT )
+				end
 			end
 		end
 	end
@@ -170,13 +195,20 @@ function vgui.Start3D2D( pos, ang, res )
 	origin = pos
 	scale = res
 	angle = ang:Forward()
-	
+	realangle = ang
 	normal = Angle( ang.p, ang.y, ang.r )
 	normal:RotateAroundAxis( ang:Forward(), -90 )
 	normal:RotateAroundAxis( ang:Right(), 90 )
 	normal = normal:Forward()
 	
 	cam.Start3D2D( pos, ang, res )
+end
+
+function vgui.Get3D2DDerma()
+	return inputWinDows
+end
+function vgui.Reset3D2DDerma()
+	inputWindows = {}
 end
 
 local _R = debug.getregistry()
@@ -241,14 +273,13 @@ end
 if not vguiCreate then vguiCreate = vgui.Create end
 function vgui.Create( class, parent )
 	local pnl = vguiCreate( class, parent )
-	
+	if not pnl then return end
 	pnl.Parent = parent
 	pnl.Class = class
-	
-	if parent then
+	if parent and type(parent) == "Panel" and IsValid(parent) then
 		if not parent.Childs then parent.Childs = {} end
 		parent.Childs[ pnl ] = true
 	end
-	
 	return pnl
 end
+

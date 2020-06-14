@@ -27,4 +27,4 @@ Have a bug or a feature request? [Please open a new issue](https://github.com/GM
 
 ## License
 
-Copyright 2015-2017 Alexander Overvoorde and Matt Stevens under [the MIT license](LICENSE).
+Copyright 2015-2020 Alexander Overvoorde and Matt Stevens under [the MIT license](LICENSE).
